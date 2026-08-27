@@ -15,3 +15,6 @@ __pycache__/
 # Logs
 *.log
 restart.log
+
+# User data
+user_langs.json

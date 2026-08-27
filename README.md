@@ -23,7 +23,8 @@
 | **Premium Emoji IDs** | `custom_emoji_id` + default emoji for any message / caption containing Premium emoji |
 | **Copy-friendly** | Every ID in its own `<code>` block — one tap to copy on mobile/desktop |
 | **Smart parsing** | Correct UTF-16 handling for surrogate pairs, deduplication, per-field entity resolution |
-| **Reply Keyboard** | Persistent keyboard — 🎨 Sticker Guide, ✨ Emoji Guide, ℹ️ About, ❌ Hide |
+| **Reply Keyboard** | Persistent keyboard — 🎨 Sticker Guide, ✨ Emoji Guide, ℹ️ About, 🌐 Language, ❌ Hide |
+| **Multilingual** | 🇬🇧 English · 🇷🇺 Русский · 🇺🇿 Oʻzbekcha — per-user, /lang or 🌐 button |
 | **Silent by design** | No spam — custom emoji handler silent, plain text gently guided only in PM |
 | **Production ready** | Rotating logs, graceful shutdown, HTML escaping, `/help` + BotFather menu |
 
@@ -91,6 +92,7 @@ After `/start` a persistent keyboard appears:
 | `🎨 Sticker Guide` | Step-by-step how to get `file_id` / `file_unique_id` / `set_name` |
 | `✨ Emoji Guide` | How to get `custom_emoji_id` from Premium emoji |
 | `ℹ️ About` | About + inline buttons → GitHub / Share bot |
+| `🌐 Language` | Inline selector — 🇬🇧 / 🇷🇺 / 🇺🇿 (also `/lang`) |
 | `❌ Hide Keyboard` | Removes keyboard (`/start` brings it back) |
 
 The keyboard is `resize_keyboard` + `is_persistent` with placeholder `Send a sticker or Premium emoji…` — hidden via `ReplyKeyboardRemove` on demand.
@@ -99,8 +101,9 @@ The keyboard is `resize_keyboard` + `is_persistent` with placeholder `Send a sti
 
 | Command | Description |
 |---|---|
-| `/start` | Show help + reply keyboard |
+| `/start` | Show help + reply keyboard (auto-detects Telegram language) |
 | `/help` | Alias for `/start` |
+| `/lang` | Choose language — 🇬🇧 English / 🇷🇺 Русский / 🇺🇿 Oʻzbekcha |
 
 ### Sticker
 
@@ -139,19 +142,29 @@ Send any message or caption containing Premium emoji (including photo captions):
 
 In private chats, other text gets a gentle hint with the keyboard; groups stay silent to avoid spam. Buttons are handled before the fallback.
 
+### 🌐 Languages
+
+Bot speaks **English**, **Русский**, **Oʻzbekcha** — per-user stored in `user_langs.json`:
+
+- Auto-detect from Telegram `language_code` on first `/start`
+- Change anytime via `🌐 Language` button or `/lang` → inline selector
+- Keyboard, help, guides, sticker headers and footers all localize
+- BotFather menu is localized too (`set_my_commands` with `language_code`)
+
 ---
 
 ## 📁 Project Structure
 
 ```
 idstickbot/
-├── bot.py              # Main bot — handlers, UTF-16 parsing, formatting
+├── bot.py              # Main bot — i18n, keyboards, handlers, UTF-16 parsing
 ├── requirements.txt    # aiogram, python-dotenv
 ├── .env.example        # Template for BOT_TOKEN
 ├── .env                # Your real token (gitignored)
 ├── run.bat             # Windows auto-restart loop
 ├── bot.log             # Rotating log (5 MB × 5, gitignored)
-└── restart.log         # Restart history (gitignored)
+├── restart.log         # Restart history (gitignored)
+└── user_langs.json     # Per-user language prefs (gitignored)
 ```
 
 ---
