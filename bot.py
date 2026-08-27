@@ -71,7 +71,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "btn_about": "ℹ️ About",
         "btn_hide": "❌ Hide Keyboard",
         "btn_lang": "🌐 Language",
-        "placeholder": "Send a sticker or Premium emoji…",
+        "placeholder": "Write a message...",
         "help": (
             "<b>👋 Welcome to ID Stick Bot!</b>\n\n"
             "<b>🎨 Stickers</b>\n"
@@ -141,7 +141,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "btn_about": "ℹ️ О боте",
         "btn_hide": "❌ Скрыть клавиатуру",
         "btn_lang": "🌐 Язык",
-        "placeholder": "Отправьте стикер или Premium эмодзи…",
+        "placeholder": "Напишите сообщение...",
         "help": (
             "<b>👋 Добро пожаловать в ID Stick Bot!</b>\n\n"
             "<b>🎨 Стикеры</b>\n"
@@ -211,7 +211,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "btn_about": "ℹ️ Bot haqida",
         "btn_hide": "❌ Klaviaturani yashirish",
         "btn_lang": "🌐 Til",
-        "placeholder": "Stiker yoki Premium emoji yuboring…",
+        "placeholder": "Xabar yozing...",
         "help": (
             "<b>👋 ID Stick Botiga xush kelibsiz!</b>\n\n"
             "<b>🎨 Stikerlar</b>\n"
