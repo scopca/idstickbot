@@ -1,5 +1,8 @@
-# Secrets
+# Secrets - hardened
 .env
+.env.*
+!.env.example
+*.env
 
 # Virtual environment
 .venv/
@@ -11,3 +14,4 @@ __pycache__/
 
 # Logs
 *.log
+restart.log
