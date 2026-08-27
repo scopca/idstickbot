@@ -362,7 +362,6 @@ def get_main_keyboard(lang: str) -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text=tr["btn_sticker"]), KeyboardButton(text=tr["btn_emoji"])],
             [KeyboardButton(text=tr["btn_about"]), KeyboardButton(text=tr["btn_lang"])],
-            [KeyboardButton(text=tr["btn_hide"])],
         ],
         resize_keyboard=True,
         is_persistent=True,
@@ -500,10 +499,7 @@ async def btn_lang(message: Message) -> None:
     await message.answer(t("lang_select", lang), reply_markup=get_lang_keyboard())
 
 
-@dp.message(F.text.in_(BTN_HIDE_ALL))
-async def btn_hide(message: Message) -> None:
-    lang = get_user_lang(message.from_user.id if message.from_user else None)
-    await message.answer(t("hide_confirm", lang), reply_markup=ReplyKeyboardRemove())
+
 
 
 @dp.callback_query(F.data.startswith("lang:"))

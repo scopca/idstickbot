@@ -90,12 +90,11 @@ After `/start` a persistent keyboard appears:
 | Button | Action |
 |---|---|
 | `🎨 Sticker Guide` | Step-by-step how to get `file_id` / `file_unique_id` / `set_name` |
-| `✨ Emoji Guide` | How to get `custom_emoji_id` from Premium emoji |
+| `✨ Emoji Guide` | How Telegram Premium emoji works + how to send one to get `custom_emoji_id` |
 | `ℹ️ About` | About + inline buttons → GitHub / Share bot |
 | `🌐 Language` | Inline selector — 🇬🇧 / 🇷🇺 / 🇺🇿 (also `/lang`) |
-| `❌ Hide Keyboard` | Removes keyboard (`/start` brings it back) |
 
-The keyboard is `resize_keyboard` + `is_persistent` with placeholder `Send a sticker or Premium emoji…` — hidden via `ReplyKeyboardRemove` on demand.
+The keyboard is `resize_keyboard` + `is_persistent` with placeholder `Send a sticker or Premium emoji…`.
 
 ### Commands
 
