@@ -20,10 +20,10 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
+    MenuButtonDefault,
     Message,
     MessageEntity,
     ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
 )
 
 load_dotenv()
@@ -634,6 +634,13 @@ async def main() -> None:
             )
         except Exception:
             logging.warning("Failed to set bot commands", exc_info=True)
+
+        # Fix: delete custom Menu button that compresses input bar and hides native 😊 picker
+        try:
+            await bot.delete_chat_menu_button()
+            # alternative explicit reset: await bot.set_chat_menu_button(menu_button=MenuButtonDefault())
+        except Exception:
+            logging.debug("delete_chat_menu_button failed", exc_info=True)
 
         drop_pending = os.getenv("DROP_PENDING_UPDATES", "false").lower() == "true"
         await bot.delete_webhook(drop_pending_updates=drop_pending)
