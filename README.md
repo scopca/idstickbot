@@ -23,8 +23,9 @@
 | **Premium Emoji IDs** | `custom_emoji_id` + default emoji for any message / caption containing Premium emoji |
 | **Copy-friendly** | Every ID in its own `<code>` block — one tap to copy on mobile/desktop |
 | **Smart parsing** | Correct UTF-16 handling for surrogate pairs, deduplication, per-field entity resolution |
-| **Silent by design** | No spam — ignores plain text, non-premium formatting |
-| **Production ready** | Rotating logs, graceful shutdown, HTML escaping, `/help` |
+| **Reply Keyboard** | Persistent keyboard — 🎨 Sticker Guide, ✨ Emoji Guide, ℹ️ About, ❌ Hide |
+| **Silent by design** | No spam — custom emoji handler silent, plain text gently guided only in PM |
+| **Production ready** | Rotating logs, graceful shutdown, HTML escaping, `/help` + BotFather menu |
 
 Supported sticker kinds: `Static` · `Animated (.tgs)` · `Video (.webm)` · `Custom Emoji`
 
@@ -81,19 +82,33 @@ DROP_PENDING_UPDATES=false
 
 ## 💬 Usage
 
+### Reply Keyboard
+
+After `/start` a persistent keyboard appears:
+
+| Button | Action |
+|---|---|
+| `🎨 Sticker Guide` | Step-by-step how to get `file_id` / `file_unique_id` / `set_name` |
+| `✨ Emoji Guide` | How to get `custom_emoji_id` from Premium emoji |
+| `ℹ️ About` | About + inline buttons → GitHub / Share bot |
+| `❌ Hide Keyboard` | Removes keyboard (`/start` brings it back) |
+
+The keyboard is `resize_keyboard` + `is_persistent` with placeholder `Send a sticker or Premium emoji…` — hidden via `ReplyKeyboardRemove` on demand.
+
 ### Commands
 
 | Command | Description |
 |---|---|
-| `/start` | Show help |
+| `/start` | Show help + reply keyboard |
 | `/help` | Alias for `/start` |
 
 ### Sticker
 
-Send any sticker — the bot replies threaded:
+Send any sticker — the bot replies threaded (new design):
 
 ```
-Video sticker file_id:
+🎬 Video sticker
+file_id:
 <code>CAACAgIAAxkBAAEf...</code>
 
 file_unique_id:
@@ -101,6 +116,7 @@ file_unique_id:
 
 Set: <code>MySetByBot</code>
 Emoji: 😀
+Tap any code block to copy 📋
 ```
 
 - Includes `file_unique_id` (stable across bots) and `set_name` to fetch the whole set via `getStickerSet`.
@@ -111,13 +127,17 @@ Emoji: 😀
 Send any message or caption containing Premium emoji (including photo captions):
 
 ```
-Custom emoji IDs:
+✨ Custom emoji IDs — tap to copy:
 😀 <code>5368324170671202286</code>
 ❤️ <code>5431449001532594346</code>
 ```
 
 - Deduplicates same `custom_emoji_id` in one message (first-seen order).
 - Correctly resolves text vs. caption offsets — even with emoji like `🏳️‍🌈` or `😀` that use surrogate pairs.
+
+### Plain Text
+
+In private chats, other text gets a gentle hint with the keyboard; groups stay silent to avoid spam. Buttons are handled before the fallback.
 
 ---
 
