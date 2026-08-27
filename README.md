@@ -196,7 +196,99 @@ All user-visible strings are `html.escape`d for `ParseMode.HTML` safety.
 
 ---
 
-## 🖥️ Deployment
+## ☁️ Deploy for Free — Render + Supabase (Recommended for 24/7)
+
+> You asked for free hosting — this uses **Render (web service, free)** + **Supabase (Postgres, free)**. I don’t read your `.env`; you set the keys yourself on Render/Supabase dashboards.
+
+| Service | What it does | Free tier |
+|---|---|---|
+| **Render** | Hosts `bot.py` 24/7 (polling + `/health` keep-alive) | 750 h/mo, sleeps after 15 min idle — we add health endpoint + optional pinger |
+| **Supabase** | Stores `user_langs` (`user_id` → `en/ru/uz`) so language survives Render restarts | 500 MB DB, 2 projects, pauses after 7 days idle — one click resume |
+
+### 1. Supabase — create project & table (2 min)
+
+1. Go to **supabase.com → New Project** (no credit card), pick region (e.g. `Frankfurt`closest to Render) → wait ~2 min
+2. In Supabase: **SQL Editor → New query** → paste `supabase_setup.sql` (in repo) → **Run**
+   ```sql
+   create table public.user_langs (user_id bigint primary key, lang text check (lang in ('en','ru','uz')), updated_at timestamptz default now());
+   alter table public.user_langs enable row level security;
+   -- then policies & grants (see file)
+   ```
+3. **Project Settings → API → Copy:** `Project URL` (`SUPABASE_URL`) and `anon public` or `publishable key` (`SUPABASE_KEY`)
+   - Keep the `service_role` key secret — not needed for bot
+
+### 2. Render — deploy bot (3 min)
+
+1. Push this repo to GitHub (already `algorithco/idstickbot`)
+2. **dashboard.render.com → New → Web Service → Connect `algorithco/idstickbot`**
+3. Settings:
+   - **Name:** `idstickbot` · **Region:** `Frankfurt` · **Branch:** `main` · **Runtime:** `Python` · **Plan:** `Free`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `python bot.py`
+   - **Health Check Path:** `/health` (bot exposes `/` and `/health` via `aiohttp` when `PORT` is set)
+4. **Environment → Add:**
+   ```
+   BOT_TOKEN=… (from @BotFather, you already have)
+   SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+   SUPABASE_KEY=YOUR_ANON_OR_PUBLISHABLE_KEY
+   # optional: DROP_PENDING_UPDATES=false
+   ```
+   *Render injects `PORT` automatically (e.g. 10000). Locally you can leave it empty — bot just polls.*
+5. **Create Web Service → Deploy**. Watch logs: `Health server listening on 0.0.0.0:10000` + `Run polling for bot @idstickrobot`
+
+> **Why health server?** Render free web services sleep after 15 min without inbound HTTP. A polling bot makes no inbound requests, so it would sleep. This bot starts a tiny `aiohttp` server on `PORT` (`/` and `/health`) so Render sees it as healthy. For 100% no-sleep on free, also add a pinger (e.g. `cron-job.org` → `https://YOUR_RENDER_URL/health` every 14 min) or use `render.yaml` (included) which sets `healthCheckPath: /health`.
+
+### 3. `render.yaml` — Infrastructure as Code
+
+Repo includes `render.yaml` so Render can auto-create the service from code:
+
+```yaml
+services:
+  - type: web
+    name: idstickbot
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    healthCheckPath: /health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+```
+
+In Render: **New → Blueprint → Connect repo → Apply** — then set the 3 env vars.
+
+### 4. How language storage works
+
+- If `SUPABASE_URL` + `SUPABASE_KEY` are set → `bot.py` uses Supabase `user_langs` table (`upsert` on `user_id`). Works on Render’s ephemeral filesystem.
+- If not set → falls back to local `user_langs.json` (fine for Windows/Linux). You can run locally without Supabase.
+
+Test locally without Supabase:
+
+```bash
+pip install -r requirements.txt
+python bot.py  # uses user_langs.json
+```
+
+Test with Supabase locally:
+
+```bash
+# .env
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_KEY=eyJ...
+python bot.py
+```
+
+No credentials are read by the assistant — you paste them only in Render dashboard and your local `.env` (gitignored).
+
+---
+
+## 🖥️ Local Deployment (Windows / Linux)
 
 ### Windows — `run.bat` (recommended)
 

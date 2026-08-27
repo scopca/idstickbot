@@ -28,6 +28,20 @@ from aiogram.types import (
 
 load_dotenv()
 BOT_TOKEN = (os.getenv("BOT_TOKEN") or "").strip()
+SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").strip()
+SUPABASE_KEY = (os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_PUBLISHABLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or "").strip()
+
+# Supabase client — optional, falls back to local file if not configured
+supabase = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        from supabase import create_client  # type: ignore
+
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        logging.getLogger(__name__).info("Supabase client initialized")
+    except Exception as e:
+        logging.warning("Supabase init failed, falling back to local file: %s", e)
+        supabase = None
 
 # Robust logging: rotating file + console (no longer relies on shell redirection)
 LOG_FILE = pathlib.Path(__file__).with_name("bot.log")
@@ -289,6 +303,17 @@ _load_langs()
 
 
 def get_user_lang(user_id: int | None, fallback_code: str | None = None) -> str:
+    # 1. Try Supabase if configured (persistent, works on Render ephemeral FS)
+    if user_id is not None and supabase is not None:
+        try:
+            res = supabase.table("user_langs").select("lang").eq("user_id", user_id).execute()
+            if res.data and len(res.data) > 0:
+                lang = res.data[0].get("lang")
+                if lang in LANGS:
+                    return lang
+        except Exception as e:
+            logging.debug("Supabase get_user_lang failed, falling back to file: %s", e)
+    # 2. Fallback to local file cache
     if user_id is not None and str(user_id) in _user_langs:
         lang = _user_langs[str(user_id)]
         if lang in LANGS:
@@ -303,6 +328,18 @@ def get_user_lang(user_id: int | None, fallback_code: str | None = None) -> str:
 def set_user_lang(user_id: int, lang: str) -> None:
     if lang not in LANGS:
         return
+    # 1. Try Supabase first
+    if supabase is not None:
+        try:
+            supabase.table("user_langs").upsert(
+                {"user_id": user_id, "lang": lang}, on_conflict="user_id"
+            ).execute()
+            # Also keep local cache in sync
+            _user_langs[str(user_id)] = lang
+            return
+        except Exception as e:
+            logging.warning("Supabase set_user_lang failed, falling back to file: %s", e)
+    # 2. Fallback to local file
     _user_langs[str(user_id)] = lang
     _save_langs()
 
@@ -417,8 +454,14 @@ def format_custom_emojis(emojis: list[tuple[str, str]]) -> str:
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
-    lang = get_user_lang(message.from_user.id if message.from_user else None, getattr(message.from_user, "language_code", None))
-    await message.answer(t("help", lang), reply_markup=get_main_keyboard(lang))
+    # Always ask language on /start — trilingual prompt so every user understands
+    text = (
+        "🌐 <b>Choose your language</b> / <b>Выберите язык</b> / <b>Tilni tanlang</b>:\n\n"
+        f"{LANGS['en']} — English\n"
+        f"{LANGS['ru']} — Русский\n"
+        f"{LANGS['uz']} — Oʻzbekcha"
+    )
+    await message.answer(text, reply_markup=get_lang_keyboard())
 
 
 @dp.message(Command("help"))
@@ -471,15 +514,14 @@ async def callback_lang(callback: CallbackQuery) -> None:
     if lang not in LANGS:
         return
     set_user_lang(callback.from_user.id, lang)
-    # Update keyboard and confirm
     try:
         await callback.message.edit_text(t("lang_select", lang), reply_markup=get_lang_keyboard())  # type: ignore
     except Exception:
         pass
     await callback.answer(t("lang_changed", lang))
-    # Send new keyboard as separate message so user sees it
+    # After picking language (especially via /start) immediately show help in that language
     if callback.message:
-        await callback.message.answer(t("lang_changed", lang), reply_markup=get_main_keyboard(lang))
+        await callback.message.answer(t("help", lang), reply_markup=get_main_keyboard(lang))
 
 
 @dp.message(F.sticker)
@@ -537,9 +579,41 @@ async def handle_text_fallback(message: Message) -> None:
         await message.answer(t("fallback", lang), reply_markup=get_main_keyboard(lang))
 
 
+async def _health_app() -> None:
+    """Tiny aiohttp server for Render health checks (keeps free web service alive)."""
+    try:
+        from aiohttp import web
+    except ImportError:
+        logging.warning("aiohttp not installed, health server disabled")
+        return
+    port = int(os.getenv("PORT", "8080") or "8080")
+
+    async def health(request):  # type: ignore[no-untyped-def]
+        return web.Response(text="ok", content_type="text/plain")
+
+    async def root(request):  # type: ignore[no-untyped-def]
+        return web.Response(text="idstickbot ok", content_type="text/plain")
+
+    app = web.Application()
+    app.router.add_get("/", root)
+    app.router.add_get("/health", health)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logging.info("Health server listening on 0.0.0.0:%s (Render PORT)", port)
+    # Keep alive forever — polling runs alongside
+    while True:
+        await asyncio.sleep(3600)
+
+
 async def main() -> None:
     if not BOT_TOKEN:
         raise SystemExit("No token provided. Copy .env.example to .env and set BOT_TOKEN.")
+    # Start health server on Render (PORT is set by Render) — polling + HTTP can coexist
+    health_task = None
+    if os.getenv("PORT"):
+        health_task = asyncio.create_task(_health_app())
     async with Bot(
         token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     ) as bot:
@@ -567,7 +641,15 @@ async def main() -> None:
 
         drop_pending = os.getenv("DROP_PENDING_UPDATES", "false").lower() == "true"
         await bot.delete_webhook(drop_pending_updates=drop_pending)
-        await dp.start_polling(bot, handle_signals=False)
+        try:
+            await dp.start_polling(bot, handle_signals=False)
+        finally:
+            if health_task:
+                health_task.cancel()
+                try:
+                    await health_task
+                except asyncio.CancelledError:
+                    pass
 
 
 if __name__ == "__main__":

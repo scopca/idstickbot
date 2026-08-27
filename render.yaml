@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: idstickbot
+    env: python
+    # Render free region closest to most Telegram users; change if needed
+    region: frankfurt
+    plan: free
+    # Build & start for Python polling bot + health check
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    # Health check keeps free instance from showing as unhealthy
+    healthCheckPath: /health
+    # Auto-deploy on git push
+    autoDeploy: true
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      # Optional:
+      # - key: DROP_PENDING_UPDATES
+      #   value: "false"
+      # Render injects PORT automatically (10000 by default)
